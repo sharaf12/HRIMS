@@ -101,11 +101,6 @@ export default function LoginPage() {
           </Form>
         </CardContent>
       </Card>
-      <div className="mt-4 text-center text-sm text-muted-foreground">
-        <p>Admin: admin / admin123</p>
-        <p>Employee: [Your Employee ID] / password123</p>
-        <p className="text-xs">(e.g. E001 / password123)</p>
-      </div>
     </main>
   );
 }
