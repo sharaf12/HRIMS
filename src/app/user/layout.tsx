@@ -54,7 +54,7 @@ export default function UserLayout({
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2">
-            <Logo className="size-7 text-primary" />
+            <Logo className="size-7" />
             <h2 className="text-lg font-semibold tracking-tight text-foreground">
               Nvidia HR Suite
             </h2>

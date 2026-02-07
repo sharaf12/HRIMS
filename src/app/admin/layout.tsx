@@ -52,7 +52,7 @@ export default function AdminLayout({
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2">
-            <Logo className="size-7 text-primary" />
+            <Logo className="size-7" />
             <h2 className="text-lg font-semibold tracking-tight text-foreground">
               Nvidia HR Suite
             </h2>
@@ -104,7 +104,7 @@ export default function AdminLayout({
           <SidebarTrigger />
           <UserNav />
         </header>
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 overflow-x-auto">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

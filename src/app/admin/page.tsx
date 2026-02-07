@@ -22,7 +22,7 @@ import {
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { useEmployeeData } from "@/hooks/use-employee-data";
-import { Users, Gauge, TrendingUp, Group } from "lucide-react";
+import { Users, Gauge, TrendingUp, Group, AlertTriangle } from "lucide-react";
 import { useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -34,9 +34,26 @@ const COLORS: Record<string, string> = {
   Poor: "hsl(var(--chart-5))",
 };
 
+const DataNotAvailable = ({ columnName }: { columnName: string }) => (
+    <CardContent className="flex flex-col items-center justify-center h-full text-center">
+        <AlertTriangle className="h-8 w-8 text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground">Data not available</p>
+        <p className="text-xs text-muted-foreground">Column &apos;{columnName}&apos; not found in the uploaded data.</p>
+    </CardContent>
+);
+
+
 export default function AdminDashboard() {
-  const { employees } = useEmployeeData();
+  const { employees, headers } = useEmployeeData();
   const isMobile = useIsMobile();
+
+  const requiredColumns = useMemo(() => ({
+    kpi: headers.find(h => h.toLowerCase().includes('kpi')) || '',
+    productivity: headers.find(h => h.toLowerCase().includes('productivity')) || '',
+    performance: headers.find(h => h.toLowerCase().includes('performance level')) || '',
+    department: headers.find(h => h.toLowerCase().includes('department')) || '',
+  }), [headers]);
+
 
   const stats = useMemo(() => {
     if (!employees || employees.length === 0) {
@@ -48,19 +65,19 @@ export default function AdminDashboard() {
         };
     }
     const totalEmployees = employees.length;
-    const avgKpi =
-      employees.reduce((acc, emp) => acc + (emp["Average KPI (%)"] || 0), 0) /
-      totalEmployees;
-    const avgProductivity =
-      employees.reduce((acc, emp) => acc + (emp["Productivity Rate (%)"] || 0), 0) /
-      totalEmployees;
-    const performanceDistribution = employees.reduce((acc, emp) => {
-      const level = emp["Final Performance Level"];
+    const avgKpi = requiredColumns.kpi
+      ? employees.reduce((acc, emp) => acc + (emp[requiredColumns.kpi] || 0), 0) /
+      totalEmployees : 0;
+    const avgProductivity = requiredColumns.productivity
+      ? employees.reduce((acc, emp) => acc + (emp[requiredColumns.productivity] || 0), 0) /
+      totalEmployees : 0;
+    const performanceDistribution = requiredColumns.performance ? employees.reduce((acc, emp) => {
+      const level = emp[requiredColumns.performance];
       if (level) {
         acc[level] = (acc[level] || 0) + 1;
       }
       return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<string, number>) : {};
 
     return {
       totalEmployees,
@@ -68,24 +85,25 @@ export default function AdminDashboard() {
       avgProductivity,
       performanceDistribution,
     };
-  }, [employees]);
+  }, [employees, requiredColumns]);
 
   const kpiByDeptData = useMemo(() => {
-     if (!employees || employees.length === 0) return [];
+     if (!employees || employees.length === 0 || !requiredColumns.department || !requiredColumns.kpi) return [];
     const deptData: Record<string, { totalKpi: number; count: number }> = {};
     employees.forEach((emp) => {
-      if (!deptData[emp.Department]) {
-        deptData[emp.Department] = { totalKpi: 0, count: 0 };
+      const dept = emp[requiredColumns.department];
+      if (!deptData[dept]) {
+        deptData[dept] = { totalKpi: 0, count: 0 };
       }
-      deptData[emp.Department].totalKpi += emp["Average KPI (%)"] || 0;
-      deptData[emp.Department].count++;
+      deptData[dept].totalKpi += emp[requiredColumns.kpi] || 0;
+      deptData[dept].count++;
     });
 
     return Object.entries(deptData).map(([name, data]) => ({
       name,
       avgKpi: data.count > 0 ? data.totalKpi / data.count : 0,
     }));
-  }, [employees]);
+  }, [employees, requiredColumns]);
 
   const performanceData = useMemo(() => {
     return Object.entries(stats.performanceDistribution).map(([name, value]) => ({
@@ -93,6 +111,15 @@ export default function AdminDashboard() {
       value,
     }));
   }, [stats.performanceDistribution]);
+  
+  const performanceColors = useMemo(() => {
+    const colorMap: Record<string, string> = {};
+    performanceData.forEach(item => {
+        const key = Object.keys(COLORS).find(c => item.name.toLowerCase().includes(c.toLowerCase()));
+        colorMap[item.name] = key ? COLORS[key] : COLORS.Satisfactory;
+    })
+    return colorMap;
+  }, [performanceData]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -115,10 +142,12 @@ export default function AdminDashboard() {
             <Gauge className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
+            {requiredColumns.kpi ? <>
             <div className="text-2xl font-bold">{stats.avgKpi.toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               Across all departments
             </p>
+            </> : <p className="text-xs text-muted-foreground">KPI column not found</p>}
           </CardContent>
         </Card>
         <Card>
@@ -129,12 +158,14 @@ export default function AdminDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
+             {requiredColumns.productivity ? <>
             <div className="text-2xl font-bold">
               {stats.avgProductivity.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground">
               Company-wide productivity rate
             </p>
+             </> : <p className="text-xs text-muted-foreground">Productivity column not found</p>}
           </CardContent>
         </Card>
         <Card>
@@ -145,11 +176,11 @@ export default function AdminDashboard() {
             <Group className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2 pt-1">
-             {Object.entries(stats.performanceDistribution).map(([level, count]) => (
+             {requiredColumns.performance && Object.entries(stats.performanceDistribution).length > 0 ? Object.entries(stats.performanceDistribution).map(([level, count]) => (
                 <Badge key={level} variant="secondary" className="text-xs">
                   {level}: {count}
                 </Badge>
-              ))}
+              )) : <p className="text-xs text-muted-foreground">Performance column not found</p>}
           </CardContent>
         </Card>
       </div>
@@ -162,8 +193,9 @@ export default function AdminDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={kpiByDeptData}>
+            {kpiByDeptData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={kpiByDeptData} margin={{ top: 5, right: 20, left: -10, bottom: 80 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
                   dataKey="name"
@@ -190,6 +222,7 @@ export default function AdminDashboard() {
                 <Bar dataKey="avgKpi" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            ) : <DataNotAvailable columnName={!requiredColumns.department ? 'Department' : 'Average KPI (%)'} />}
           </CardContent>
         </Card>
         <Card>
@@ -200,6 +233,7 @@ export default function AdminDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {performanceData.length > 0 ? (
             <ResponsiveContainer width="100%" height={isMobile ? 400 : 300}>
               <PieChart>
                 <Pie
@@ -222,8 +256,8 @@ export default function AdminDashboard() {
                     );
                   }}
                 >
-                  {performanceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[entry.name]} />
+                  {performanceData.map((entry) => (
+                    <Cell key={`cell-${entry.name}`} fill={performanceColors[entry.name]} />
                   ))}
                 </Pie>
                 <Tooltip
@@ -237,10 +271,11 @@ export default function AdminDashboard() {
                   verticalAlign={isMobile ? "bottom" : "middle"}
                   align={isMobile ? "center" : "right"}
                   iconType="circle"
-                  formatter={(value) => <span className="text-foreground">{value}</span>}
+                  formatter={(value) => <span className="text-white">{value}</span>}
                 />
               </PieChart>
             </ResponsiveContainer>
+             ) : <DataNotAvailable columnName={'Final Performance Level'} />}
           </CardContent>
         </Card>
       </div>

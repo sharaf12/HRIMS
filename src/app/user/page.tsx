@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import {
   Briefcase,
   Building,
@@ -39,42 +38,57 @@ export default function UserDashboard() {
   }
   
   const getInitials = (name: string) => {
+    if (!name) return "U";
     return name
       .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase();
   };
+  
+  const headers = Object.keys(employee);
+  const idKey = headers.find(h => h.toLowerCase().includes('id')) || headers[0];
+  const nameKey = headers.find(h => h.toLowerCase().includes('name')) || headers[1] || idKey;
+  const jobTitleKey = headers.find(h => h.toLowerCase().includes('job title')) || '';
+  const departmentKey = headers.find(h => h.toLowerCase().includes('department')) || '';
+  const supervisorKey = headers.find(h => h.toLowerCase().includes('supervisor')) || '';
+  const kpiKey = headers.find(h => h.toLowerCase().includes('kpi')) || '';
+  const productivityKey = headers.find(h => h.toLowerCase().includes('productivity')) || '';
+  const performanceKey = headers.find(h => h.toLowerCase().includes('performance level')) || '';
+  const bonusKey = headers.find(h => h.toLowerCase().includes('bonus')) || '';
+  const rewardKey = headers.find(h => h.toLowerCase().includes('reward')) || '';
+  const retentionKey = headers.find(h => h.toLowerCase().includes('retention')) || '';
+
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <Card className="lg:col-span-1">
         <CardHeader className="flex flex-col items-center text-center space-y-4">
           <Avatar className="h-24 w-24 border-2 border-primary">
-            <AvatarImage src={`/avatars/${employee["Employee ID"]}.png`} />
+            <AvatarImage src={`/avatars/${employee[idKey]}.png`} />
             <AvatarFallback className="text-3xl">
-              {getInitials(employee["Employee Name"])}
+              {getInitials(employee[nameKey])}
             </AvatarFallback>
           </Avatar>
           <div>
-            <CardTitle className="text-2xl">{employee["Employee Name"]}</CardTitle>
-            <CardDescription>{employee["Employee ID"]}</CardDescription>
+            <CardTitle className="text-2xl">{employee[nameKey]}</CardTitle>
+            <CardDescription>{employee[idKey]}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="text-sm">
           <div className="space-y-4">
-            <div className="flex items-center">
+            {jobTitleKey && <div className="flex items-center">
               <Briefcase className="mr-3 h-5 w-5 text-muted-foreground" />
-              <span>{employee["Job Title"]}</span>
-            </div>
-            <div className="flex items-center">
+              <span>{employee[jobTitleKey]}</span>
+            </div>}
+            {departmentKey && <div className="flex items-center">
               <Building className="mr-3 h-5 w-5 text-muted-foreground" />
-              <span>{employee.Department}</span>
-            </div>
-            <div className="flex items-center">
+              <span>{employee[departmentKey]}</span>
+            </div>}
+            {supervisorKey && <div className="flex items-center">
               <User className="mr-3 h-5 w-5 text-muted-foreground" />
-              <span>Supervisor: {employee.Supervisor}</span>
-            </div>
+              <span>Supervisor: {employee[supervisorKey]}</span>
+            </div>}
           </div>
         </CardContent>
       </Card>
@@ -85,37 +99,29 @@ export default function UserDashboard() {
             <CardTitle>Performance Overview</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-6 sm:grid-cols-2">
-            <div className="flex items-start gap-4">
+            {kpiKey && <div className="flex items-start gap-4">
               <Star className="h-8 w-8 text-primary mt-1" />
               <div>
-                <p className="text-sm text-muted-foreground">Average KPI</p>
-                <p className="text-2xl font-bold">{employee["Average KPI (%)"]}%</p>
+                <p className="text-sm text-muted-foreground">{kpiKey}</p>
+                <p className="text-2xl font-bold">{employee[kpiKey]}%</p>
               </div>
-            </div>
-            <div className="flex items-start gap-4">
+            </div>}
+            {productivityKey && <div className="flex items-start gap-4">
               <Zap className="h-8 w-8 text-primary mt-1" />
               <div>
-                <p className="text-sm text-muted-foreground">Productivity Rate</p>
-                <p className="text-2xl font-bold">{employee["Productivity Rate (%)"]}%</p>
+                <p className="text-sm text-muted-foreground">{productivityKey}</p>
+                <p className="text-2xl font-bold">{employee[productivityKey]}%</p>
               </div>
-            </div>
+            </div>}
           </CardContent>
-           <CardContent>
+           {performanceKey && <CardContent>
              <div className="flex items-center space-x-2">
-                <p className="text-sm text-muted-foreground">Final Performance Level:</p>
-                <Badge className={
-                    {
-                      Excellent: "bg-green-600 text-white",
-                      Good: "bg-blue-500 text-white",
-                      Satisfactory: "bg-yellow-500 text-black",
-                      "Needs Improvement": "bg-yellow-500 text-black",
-                      Poor: "bg-red-600 text-white"
-                    }[employee["Final Performance Level"]]
-                }>
-                  {employee["Final Performance Level"]}
+                <p className="text-sm text-muted-foreground">{performanceKey}:</p>
+                <Badge>
+                  {employee[performanceKey]}
                 </Badge>
               </div>
-           </CardContent>
+           </CardContent>}
         </Card>
         
         <Card>
@@ -123,22 +129,22 @@ export default function UserDashboard() {
             <CardTitle>Rewards & Retention</CardTitle>
           </CardHeader>
            <CardContent className="grid gap-6 sm:grid-cols-2">
-            <div className="flex items-start gap-4">
+            {bonusKey && <div className="flex items-start gap-4">
               <Gift className="h-8 w-8 text-accent mt-1" />
               <div>
-                <p className="text-sm text-muted-foreground">Bonus Eligibility</p>
-                <p className="text-2xl font-bold">{employee["Bonus Eligibility"]}</p>
-                 <p className="text-xs text-muted-foreground">Reward Type: {employee["Reward Type"]}</p>
+                <p className="text-sm text-muted-foreground">{bonusKey}</p>
+                <p className="text-2xl font-bold">{employee[bonusKey]}</p>
+                 {rewardKey && <p className="text-xs text-muted-foreground">{rewardKey}: {employee[rewardKey]}</p>}
               </div>
-            </div>
-            <div className="flex items-start gap-4">
+            </div>}
+            {retentionKey && <div className="flex items-start gap-4">
               <Handshake className="h-8 w-8 text-accent mt-1" />
               <div>
-                <p className="text-sm text-muted-foreground">Retention Action</p>
-                <p className="text-xl font-semibold">{employee["Retention Action"]}</p>
+                <p className="text-sm text-muted-foreground">{retentionKey}</p>
+                <p className="text-xl font-semibold">{employee[retentionKey]}</p>
                 <p className="text-xs text-muted-foreground">Proactive measures for career growth</p>
               </div>
-            </div>
+            </div>}
           </CardContent>
         </Card>
       </div>

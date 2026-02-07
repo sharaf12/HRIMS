@@ -4,22 +4,35 @@ import React, { createContext, useContext, useState, ReactNode, useMemo, useCall
 import { Employee } from '@/lib/types';
 import { employees as initialEmployees } from '@/lib/data';
 
+const getHeadersFromData = (data: Employee[]) => {
+    if (!data || data.length === 0) return [];
+    return Object.keys(data[0]);
+}
+
 interface EmployeeDataContextType {
   employees: Employee[];
-  setEmployees: (employees: Employee[]) => void;
+  headers: string[];
+  setData: (data: Employee[], headers?: string[]) => void;
   resetEmployees: () => void;
 }
 
 const EmployeeDataContext = createContext<EmployeeDataContextType | undefined>(undefined);
 
 export function EmployeeDataProvider({ children }: { children: ReactNode }) {
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  const [employees, setEmployeesState] = useState<Employee[]>(initialEmployees);
+  const [headers, setHeaders] = useState<string[]>(getHeadersFromData(initialEmployees));
+
+  const setData = useCallback((data: Employee[], customHeaders?: string[]) => {
+      setEmployeesState(data);
+      setHeaders(customHeaders || getHeadersFromData(data));
+  }, []);
 
   const resetEmployees = useCallback(() => {
-    setEmployees(initialEmployees);
+    setEmployeesState(initialEmployees);
+    setHeaders(getHeadersFromData(initialEmployees));
   }, []);
   
-  const value = useMemo(() => ({ employees, setEmployees, resetEmployees }), [employees, resetEmployees]);
+  const value = useMemo(() => ({ employees, headers, setData, resetEmployees }), [employees, headers, setData, resetEmployees]);
 
   return (
     <EmployeeDataContext.Provider value={value}>

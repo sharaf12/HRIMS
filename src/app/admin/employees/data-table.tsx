@@ -49,16 +49,19 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[],
   onAdd: () => void;
+  headers: string[];
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   onAdd,
+  headers,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [globalFilter, setGlobalFilter] = React.useState('')
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
@@ -75,22 +78,24 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: setPagination,
+    onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       pagination,
+      globalFilter,
     },
   })
 
   return (
-    <div>
+    <div className="w-full">
       <div className="flex items-center justify-between py-4">
         <Input
-          placeholder="Filter by name..."
-          value={(table.getColumn("Employee Name")?.getFilterValue() as string) ?? ""}
+          placeholder="Filter all columns..."
+          value={globalFilter ?? ""}
           onChange={(event) =>
-            table.getColumn("Employee Name")?.setFilterValue(event.target.value)
+            setGlobalFilter(event.target.value)
           }
           className="max-w-sm"
         />

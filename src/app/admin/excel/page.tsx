@@ -18,18 +18,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useEmployeeData } from "@/hooks/use-employee-data";
 import { Employee } from "@/lib/types";
 
-const convertToCSV = (data: any[]) => {
-  if (!data || data.length === 0) {
+const convertToCSV = (data: any[], headers: string[]) => {
+  if (!data || data.length === 0 || !headers || headers.length === 0) {
     return "";
   }
   const replacer = (_key: any, value: any) => (value === null ? "" : value);
-  const header = Object.keys(data[0]);
   const csv = data.map((row) =>
-    header
-      .map((fieldName) => JSON.stringify(row[fieldName], replacer))
+    headers
+      .map((fieldName) => JSON.stringify(row[fieldName] || '', replacer))
       .join(",")
   );
-  csv.unshift(header.join(","));
+  csv.unshift(headers.join(","));
   return csv.join("\r\n");
 };
 
@@ -47,64 +46,62 @@ const downloadCSV = (csvString: string, filename: string) => {
   }
 };
 
-const parseCSV = (csvString: string): Employee[] => {
-  try {
-    const lines = csvString.trim().split(/\r?\n/);
-    if (lines.length < 2) return [];
+const parseCSV = (csvString: string): { data: Record<string, any>[], headers: string[] } => {
+    try {
+        const lines = csvString.trim().split(/\r?\n/);
+        if (lines.length < 1) return { data: [], headers: [] };
 
-    // Remove BOM from header line itself.
-    const headerLine = lines[0].replace(/^\uFEFF/, '');
-    const header = headerLine.split(',').map(h => h.replace(/"/g, '').trim());
-    
-    const requiredHeaders: (keyof Employee)[] = [
-      "Employee ID", "Employee Name", "Department", "Job Title", "Supervisor",
-      "Average KPI (%)", "Productivity Rate (%)", "Final Performance Level",
-      "Bonus Eligibility", "Reward Type", "Retention Action"
-    ];
+        const headerLine = lines[0].replace(/^\uFEFF/, '');
+        const headers = (headerLine.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [])
+            .map(h => h.replace(/"/g, '').trim());
 
-    const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
-    if (missingHeaders.length > 0) {
-        throw new Error(`CSV file is missing required headers: ${missingHeaders.join(', ')}. Please use the downloaded CSV as a template.`);
-    }
-    
-    const rows = lines.slice(1);
-
-    return rows.map(rowString => {
-      if (!rowString.trim()) return null;
-      
-      // This regex is a bit safer for values that might contain commas if they are quoted
-      const values = rowString.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)?.map(v => v.replace(/"/g, '').trim()) || [];
-      
-      const rowObject: any = {};
-      header.forEach((key, index) => {
-        const headerKey = key as keyof Employee;
-        let value: any = values[index];
-        if (headerKey === 'Average KPI (%)' || headerKey === 'Productivity Rate (%)') {
-          value = parseFloat(value);
-          if (isNaN(value)) value = 0;
+        if (headers.length === 0 || lines.length < 2) {
+            return { data: [], headers: headers };
         }
-        rowObject[headerKey] = value;
-      });
-      return rowObject as Employee;
-    }).filter((e): e is Employee => e !== null);
-  } catch (error) {
-    console.error("Error parsing CSV:", error);
-    if (error instanceof Error) {
-        throw new Error(`Failed to parse CSV: ${error.message}`);
+
+        const rows = lines.slice(1);
+
+        const data = rows.map(rowString => {
+            if (!rowString.trim()) return null;
+
+            const values = rowString.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => {
+                let value = v.trim();
+                if (value.startsWith('"') && value.endsWith('"')) {
+                    value = value.substring(1, value.length - 1).replace(/""/g, '"');
+                }
+                return value;
+            });
+            
+            const rowObject: Record<string, any> = {};
+            headers.forEach((key, index) => {
+                let value: any = values[index] ?? '';
+                if (!isNaN(value as any) && value.trim() !== '') {
+                    value = parseFloat(value);
+                }
+                rowObject[key] = value;
+            });
+            return rowObject;
+        }).filter((e): e is Record<string, any> => e !== null);
+
+        return { data, headers };
+    } catch (error) {
+        console.error("Error parsing CSV:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to parse CSV: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while parsing CSV.");
     }
-    throw new Error("An unknown error occurred while parsing CSV.");
-  }
 };
 
 
 export default function ExcelOperationsPage() {
   const { toast } = useToast();
-  const { employees, setEmployees, resetEmployees } = useEmployeeData();
+  const { employees, setData, resetEmployees, headers } = useEmployeeData();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
   const handleDownload = () => {
-    const csvData = convertToCSV(employees);
+    const csvData = convertToCSV(employees, headers);
     downloadCSV(csvData, "employees.csv");
     toast({
       title: "Download Started",
@@ -133,8 +130,11 @@ export default function ExcelOperationsPage() {
     reader.onload = (e) => {
       const text = e.target?.result as string;
       try {
-        const newEmployees = parseCSV(text);
-        setEmployees(newEmployees);
+        const { data: newEmployees, headers: newHeaders } = parseCSV(text);
+        if (newEmployees.length === 0 || newHeaders.length === 0) {
+            throw new Error("CSV file appears to be empty or has no headers.")
+        }
+        setData(newEmployees, newHeaders);
         toast({
           title: "Import Successful",
           description: `Successfully imported ${newEmployees.length} employee records.`,
@@ -199,7 +199,7 @@ export default function ExcelOperationsPage() {
             <CardTitle>Import Data</CardTitle>
             <CardDescription>
               Upload a new CSV file to replace all existing data. This action
-              cannot be undone.
+              cannot be undone. The first column should be a unique ID for each employee.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

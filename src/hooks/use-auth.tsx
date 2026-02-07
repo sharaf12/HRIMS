@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Employee } from '@/lib/types';
 import { useEmployeeData } from './use-employee-data';
@@ -22,11 +22,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const { employees } = useEmployeeData();
+  const { employees, headers } = useEmployeeData();
+
+  // Use a ref to hold employee data to prevent re-creating the login function on every data change.
+  const employeeDataRef = useRef({ employees, headers });
+  useEffect(() => {
+    employeeDataRef.current = { employees, headers };
+  }, [employees, headers]);
 
   useEffect(() => {
-    // This is a simple check to prevent flicker on protected routes.
-    // In a real app, you'd verify a token here.
     try {
       const storedUser = sessionStorage.getItem('user');
       if (storedUser) {
@@ -38,6 +42,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
   }, []);
+  
+  // This effect updates the logged-in user's data if it gets modified by an admin.
+  useEffect(() => {
+    if (user && user.role === 'user' && user.employeeData) {
+      const idKey = headers.find(h => h.toLowerCase().includes('employee id')) || (headers.length > 0 ? headers[0] : '');
+      if (!idKey) return;
+      const currentEmployeeData = employees.find(e => e[idKey] === user.username);
+      if (currentEmployeeData && JSON.stringify(currentEmployeeData) !== JSON.stringify(user.employeeData)) {
+        const updatedUser = { ...user, employeeData: currentEmployeeData };
+        setUser(updatedUser);
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    }
+  }, [employees, headers, user]);
+
 
   useEffect(() => {
     if (loading) return;
@@ -51,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, pathname, router, loading]);
 
-  const login = async (username: string, pass: string) => {
+  const login = useCallback(async (username: string, pass: string) => {
     if (username === 'admin' && pass === 'admin123') {
       const adminUserData = { username: 'admin', role: 'admin' as Role };
       setUser(adminUserData);
@@ -60,10 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return true;
     }
     
-    // Employee login
-    const employeeData = employees.find(e => e['Employee ID'] === username);
+    const { employees: currentEmployees, headers: currentHeaders } = employeeDataRef.current;
+    const idKey = currentHeaders.find(h => h.toLowerCase().includes('employee id')) || (currentHeaders.length > 0 ? currentHeaders[0] : '');
+    if (!idKey) return false;
+
+    const employeeData = currentEmployees.find(e => e[idKey] === username);
     if (employeeData && pass === 'password123') {
-      const userData = { username: employeeData['Employee ID'], role: 'user' as Role, employeeData };
+      const userData = { username: employeeData[idKey], role: 'user' as Role, employeeData };
       setUser(userData);
       sessionStorage.setItem('user', JSON.stringify(userData));
       router.push('/user');
@@ -71,15 +93,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return false;
-  };
+  }, [router]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     sessionStorage.removeItem('user');
     router.push('/login');
-  };
+  }, [router]);
   
-  const value = { isAuthenticated: !!user, user, login, logout, loading };
+  const value = useMemo(() => ({ 
+    isAuthenticated: !!user, 
+    user, 
+    login, 
+    logout, 
+    loading 
+  }), [user, login, logout, loading]);
 
   return (
     <AuthContext.Provider value={value}>
