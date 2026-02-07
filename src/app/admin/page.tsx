@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { useEmployeeData } from "@/hooks/use-employee-data";
 import { Users, Gauge, TrendingUp, Group } from "lucide-react";
 import { useMemo } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const COLORS: Record<string, string> = {
   Excellent: "hsl(var(--chart-1))",
@@ -35,6 +36,7 @@ const COLORS: Record<string, string> = {
 
 export default function AdminDashboard() {
   const { employees } = useEmployeeData();
+  const isMobile = useIsMobile();
 
   const stats = useMemo(() => {
     if (!employees || employees.length === 0) {
@@ -160,11 +162,24 @@ export default function AdminDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={350}>
               <BarChart data={kpiByDeptData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} unit="%" />
+                <XAxis
+                  dataKey="name"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  angle={-45}
+                  textAnchor="end"
+                  interval={0}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  unit="%"
+                />
                 <Tooltip
                   cursor={{ fill: 'hsl(var(--secondary))' }}
                   contentStyle={{
@@ -185,14 +200,14 @@ export default function AdminDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={isMobile ? 400 : 300}>
               <PieChart>
                 <Pie
                   data={performanceData}
-                  cx="40%"
+                  cx={isMobile ? "50%" : "40%"}
                   cy="50%"
                   labelLine={false}
-                  outerRadius={100}
+                  outerRadius={isMobile ? 80 : 100}
                   fill="#8884d8"
                   dataKey="value"
                   nameKey="name"
@@ -218,9 +233,9 @@ export default function AdminDashboard() {
                   }}
                 />
                 <Legend
-                  layout="vertical"
-                  verticalAlign="middle"
-                  align="right"
+                  layout={isMobile ? "horizontal" : "vertical"}
+                  verticalAlign={isMobile ? "bottom" : "middle"}
+                  align={isMobile ? "center" : "right"}
                   iconType="circle"
                   formatter={(value) => <span className="text-foreground">{value}</span>}
                 />

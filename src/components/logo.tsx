@@ -3,7 +3,7 @@ import type { SVGProps } from 'react';
 export function Logo(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
-      xmlns="http://https://www.vecteezy.com/vector-art/20190500-nvidia-logo-vector-nvidia-icon-free-vector"
+      xmlns="https://www.vecteezy.com/vector-art/20190500-nvidia-logo-vector-nvidia-icon-free-vector"
       viewBox="0 0 256 256"
       width="1em"
       height="1em"
