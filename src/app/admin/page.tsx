@@ -1,5 +1,7 @@
+
 "use client";
 
+import { useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -8,277 +10,575 @@ import {
   CardDescription
 } from "@/components/ui/card";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
+  BarChart, Bar, ScatterChart, Scatter, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { Badge } from "@/components/ui/badge";
 import { useEmployeeData } from "@/hooks/use-employee-data";
-import { Users, Gauge, TrendingUp, Group, AlertTriangle } from "lucide-react";
-import { useMemo } from "react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { Gauge, TrendingUp, CalendarCheck, Clock, AlertTriangle, Users } from "lucide-react";
 
-const COLORS: Record<string, string> = {
-  Excellent: "hsl(var(--chart-1))",
-  Good: "hsl(var(--chart-2))",
-  Satisfactory: "hsl(var(--chart-3))",
-  "Needs Improvement": "hsl(var(--chart-4))",
-  Poor: "hsl(var(--chart-5))",
+const CHART_COLORS = {
+  blue: "hsl(var(--chart-2))",
+  green: "hsl(var(--chart-1))",
+  orange: "hsl(var(--chart-5))",
+  yellow: "hsl(var(--chart-4))",
+  purple: "hsl(var(--chart-3))",
+  red: "hsl(var(--destructive))",
 };
 
-const DataNotAvailable = ({ columnName }: { columnName: string }) => (
-    <CardContent className="flex flex-col items-center justify-center h-full text-center">
-        <AlertTriangle className="h-8 w-8 text-muted-foreground mb-2" />
-        <p className="text-sm text-muted-foreground">Data not available</p>
-        <p className="text-xs text-muted-foreground">Column &apos;{columnName}&apos; not found in the uploaded data.</p>
-    </CardContent>
+const STACK_COLORS = [
+  CHART_COLORS.green,
+  CHART_COLORS.blue,
+  CHART_COLORS.purple,
+  CHART_COLORS.yellow,
+  CHART_COLORS.orange,
+  "hsl(var(--ring))"
+];
+
+const PERFORMANCE_COLORS: Record<string, string> = {
+  Excellent: CHART_COLORS.green,
+  Good: CHART_COLORS.blue,
+  Satisfactory: CHART_COLORS.yellow,
+  "Needs Improvement": CHART_COLORS.orange,
+  Poor: CHART_COLORS.red,
+};
+
+
+const ChartNotAvailable = ({ title, description, requiredColumns }: { title: string; description: string; requiredColumns: string[] }) => (
+    <Card className="h-full">
+        <CardHeader>
+            <CardTitle className="text-lg">{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center h-48 text-center">
+            <AlertTriangle className="h-8 w-8 text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">Data not available</p>
+            <p className="text-xs text-muted-foreground mt-1">
+                Required column(s): {requiredColumns.join(', ')}
+            </p>
+        </CardContent>
+    </Card>
 );
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const finalLabel = label || payload[0]?.payload?.name;
+    return (
+      <div className="rounded-lg border bg-background p-2.5 text-sm shadow-lg">
+        {finalLabel && <p className="font-medium text-foreground mb-1">{finalLabel}</p>}
+        {payload.map((pld: any, index: number) => (
+          <div key={index} style={{ color: pld.fill || pld.color || pld.stroke }}>
+            {pld.name}: {typeof pld.value === 'number' ? pld.value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : pld.value}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 
 export default function AdminDashboard() {
   const { employees, headers } = useEmployeeData();
-  const isMobile = useIsMobile();
 
-  const requiredColumns = useMemo(() => ({
-    kpi: headers.find(h => h.toLowerCase().includes('kpi')) || '',
-    productivity: headers.find(h => h.toLowerCase().includes('productivity')) || '',
-    performance: headers.find(h => h.toLowerCase().includes('performance level')) || '',
-    department: headers.find(h => h.toLowerCase().includes('department')) || '',
-  }), [headers]);
-
-
-  const stats = useMemo(() => {
-    if (!employees || employees.length === 0) {
-        return {
-            totalEmployees: 0,
-            avgKpi: 0,
-            avgProductivity: 0,
-            performanceDistribution: {},
-        };
-    }
-    const totalEmployees = employees.length;
-    const avgKpi = requiredColumns.kpi
-      ? employees.reduce((acc, emp) => acc + (emp[requiredColumns.kpi] || 0), 0) /
-      totalEmployees : 0;
-    const avgProductivity = requiredColumns.productivity
-      ? employees.reduce((acc, emp) => acc + (emp[requiredColumns.productivity] || 0), 0) /
-      totalEmployees : 0;
-    const performanceDistribution = requiredColumns.performance ? employees.reduce((acc, emp) => {
-      const level = emp[requiredColumns.performance];
-      if (level) {
-        acc[level] = (acc[level] || 0) + 1;
+  const requiredColumns = useMemo(() => {
+    const findHeader = (keywords: string[]) => {
+      for (const keyword of keywords) {
+        const found = headers.find(h => h.toLowerCase().includes(keyword));
+        if (found) return found;
       }
-      return acc;
-    }, {} as Record<string, number>) : {};
+      return '';
+    };
 
     return {
-      totalEmployees,
-      avgKpi,
-      avgProductivity,
-      performanceDistribution,
+      kpi: findHeader(['kpi score (%)', 'average kpi (%)']),
+      performance: findHeader(['performance rating', 'final performance level']),
+      attendance: findHeader(['attendance rate (%)', 'attendance']),
+      trainingHours: findHeader(['training hours attended', 'training hours']),
+      department: findHeader(['department']),
+      jobTitle: findHeader(['job title', 'role']),
+      recommendation: findHeader(['system recommendation', 'retention action']),
+      projects: findHeader(['projects completed']),
+      supervisor: findHeader(['supervisor']),
+      quarter: findHeader(['quarter']),
     };
+  }, [headers]);
+
+  const kpiCardStats = useMemo(() => {
+    if (!employees || employees.length === 0) {
+        return { avgKpi: 0, excellentPercent: 0, avgAttendance: 0, totalTraining: 0 };
+    }
+    const totalEmployees = employees.length;
+    
+    const avgKpi = requiredColumns.kpi
+      ? employees.reduce((acc, emp) => acc + (Number(emp[requiredColumns.kpi]) || 0), 0) / totalEmployees
+      : 0;
+
+    const excellentCount = requiredColumns.performance
+      ? employees.filter(e => String(e[requiredColumns.performance]).toLowerCase() === 'excellent').length
+      : 0;
+    const excellentPercent = totalEmployees > 0 ? (excellentCount / totalEmployees) * 100 : 0;
+    
+    const avgAttendance = requiredColumns.attendance
+      ? employees.reduce((acc, emp) => acc + (Number(emp[requiredColumns.attendance]) || 0), 0) / totalEmployees
+      : 0;
+
+    const totalTraining = requiredColumns.trainingHours
+      ? employees.reduce((acc, emp) => acc + (Number(emp[requiredColumns.trainingHours]) || 0), 0)
+      : 0;
+
+    return { avgKpi, excellentPercent, avgAttendance, totalTraining };
   }, [employees, requiredColumns]);
 
-  const kpiByDeptData = useMemo(() => {
-     if (!employees || employees.length === 0 || !requiredColumns.department || !requiredColumns.kpi) return [];
-    const deptData: Record<string, { totalKpi: number; count: number }> = {};
-    employees.forEach((emp) => {
+  const performanceDistributionData = useMemo(() => {
+    if (!requiredColumns.performance) return [];
+    const dist = employees.reduce((acc, emp) => {
+      const level = emp[requiredColumns.performance];
+      if (level) acc[level] = (acc[level] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(dist).map(([name, value]) => ({ name, value }));
+  }, [employees, requiredColumns.performance]);
+
+  const departmentKpiData = useMemo(() => {
+    if (!requiredColumns.department || !requiredColumns.kpi) return [];
+    const deptData: Record<string, { total: number; count: number }> = {};
+    employees.forEach(emp => {
       const dept = emp[requiredColumns.department];
-      if (!deptData[dept]) {
-        deptData[dept] = { totalKpi: 0, count: 0 };
-      }
-      deptData[dept].totalKpi += emp[requiredColumns.kpi] || 0;
+      if (!dept) return;
+      if (!deptData[dept]) deptData[dept] = { total: 0, count: 0 };
+      deptData[dept].total += (Number(emp[requiredColumns.kpi]) || 0);
       deptData[dept].count++;
     });
-
     return Object.entries(deptData).map(([name, data]) => ({
       name,
-      avgKpi: data.count > 0 ? data.totalKpi / data.count : 0,
+      'Average KPI': data.count > 0 ? data.total / data.count : 0
     }));
-  }, [employees, requiredColumns]);
-
-  const performanceData = useMemo(() => {
-    return Object.entries(stats.performanceDistribution).map(([name, value]) => ({
-      name,
-      value,
-    }));
-  }, [stats.performanceDistribution]);
+  }, [employees, requiredColumns.department, requiredColumns.kpi]);
   
-  const performanceColors = useMemo(() => {
-    const colorMap: Record<string, string> = {};
-    performanceData.forEach(item => {
-        const key = Object.keys(COLORS).find(c => item.name.toLowerCase().includes(c.toLowerCase()));
-        colorMap[item.name] = key ? COLORS[key] : COLORS.Satisfactory;
-    })
-    return colorMap;
-  }, [performanceData]);
+ const hrActionData = useMemo(() => {
+    if (!requiredColumns.department || !requiredColumns.recommendation) return { data: [], actions: [] };
+    
+    const allActions = [...new Set(employees.map(e => e[requiredColumns.recommendation]).filter(Boolean))] as string[];
+    const deptActions: Record<string, Record<string, number>> = {};
+    
+    employees.forEach(emp => {
+        const dept = emp[requiredColumns.department];
+        const action = emp[requiredColumns.recommendation] || 'N/A';
+        if (!dept) return;
+
+        if (!deptActions[dept]) {
+            deptActions[dept] = {};
+        }
+        deptActions[dept][action] = (deptActions[dept][action] || 0) + 1;
+    });
+
+    const data = Object.entries(deptActions).map(([name, values]) => ({ name, ...values }));
+    
+    return { data, actions: allActions };
+}, [employees, requiredColumns.department, requiredColumns.recommendation]);
+
+  const projectsVsKpiData = useMemo(() => {
+    if (!requiredColumns.kpi || !requiredColumns.projects) return [];
+    return employees.map(emp => ({
+        kpi: emp[requiredColumns.kpi],
+        projects: emp[requiredColumns.projects]
+    })).filter(e => e.kpi && e.projects);
+  }, [employees, requiredColumns.kpi, requiredColumns.projects]);
+
+  const avgTrainingByDeptData = useMemo(() => {
+      if (!requiredColumns.department || !requiredColumns.trainingHours) return [];
+      const deptData: Record<string, { total: number; count: number }> = {};
+      employees.forEach(emp => {
+        const dept = emp[requiredColumns.department];
+        if (!dept) return;
+        if (!deptData[dept]) deptData[dept] = { total: 0, count: 0 };
+        deptData[dept].total += (Number(emp[requiredColumns.trainingHours]) || 0);
+        deptData[dept].count++;
+      });
+      return Object.entries(deptData).map(([name, data]) => ({
+        name,
+        'Average Hours': data.count > 0 ? data.total / data.count : 0
+      }));
+  }, [employees, requiredColumns.department, requiredColumns.trainingHours]);
+
+ const kpiTrendData = useMemo(() => {
+    const quarterCol = requiredColumns.quarter;
+    const kpiCol = requiredColumns.kpi;
+    
+    if (!quarterCol || !kpiCol || !employees || employees.length === 0) {
+      return [];
+    }
+
+    const quarterlyData = employees.reduce((acc, emp) => {
+        const quarter = emp[quarterCol];
+        const kpi = Number(emp[kpiCol]) || 0;
+
+        if (quarter && typeof quarter === 'string' && quarter.toUpperCase().startsWith('Q')) {
+            const normalizedQuarter = quarter.toUpperCase();
+            if (!acc[normalizedQuarter]) {
+                acc[normalizedQuarter] = { total: 0, count: 0 };
+            }
+            acc[normalizedQuarter].total += kpi;
+            acc[normalizedQuarter].count++;
+        }
+        return acc;
+    }, {} as Record<string, { total: number; count: number }>);
+
+    const chartData = ['Q1', 'Q2', 'Q3', 'Q4'].map(q => {
+        const data = quarterlyData[q];
+        return {
+            name: q,
+            'Average KPI': data && data.count > 0 ? data.total / data.count : 0,
+        };
+    });
+
+    const hasData = chartData.some(d => d['Average KPI'] > 0);
+    return hasData ? chartData : [];
+}, [employees, requiredColumns.quarter, requiredColumns.kpi]);
+
+const employeeDistByDeptData = useMemo(() => {
+    if (!requiredColumns.department) return [];
+    const dist = employees.reduce((acc, emp) => {
+        const dept = emp[requiredColumns.department] || 'Unknown';
+        acc[dept] = (acc[dept] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(dist).map(([name, value]) => ({ name, Employees: value }));
+}, [employees, requiredColumns.department]);
+
+const avgKpiByJobTitleData = useMemo(() => {
+    if (!requiredColumns.jobTitle || !requiredColumns.kpi) return [];
+    const roleData: Record<string, { total: number, count: number }> = {};
+    employees.forEach(emp => {
+        const role = emp[requiredColumns.jobTitle];
+        if (!role) return;
+        if (!roleData[role]) roleData[role] = { total: 0, count: 0 };
+        roleData[role].total += (Number(emp[requiredColumns.kpi]) || 0);
+        roleData[role].count++;
+    });
+    return Object.entries(roleData).map(([name, data]) => ({
+      name,
+      'Average KPI': data.count > 0 ? data.total / data.count : 0
+    })).sort((a, b) => b['Average KPI'] - a['Average KPI']);
+}, [employees, requiredColumns.jobTitle, requiredColumns.kpi]);
+
+const avgAttendanceByDeptData = useMemo(() => {
+    if (!requiredColumns.department || !requiredColumns.attendance) return [];
+    const deptData: Record<string, { total: number, count: number }> = {};
+    employees.forEach(emp => {
+        const dept = emp[requiredColumns.department];
+        if (!dept) return;
+        if (!deptData[dept]) deptData[dept] = { total: 0, count: 0 };
+        deptData[dept].total += (Number(emp[requiredColumns.attendance]) || 0);
+        deptData[dept].count++;
+    });
+    return Object.entries(deptData).map(([name, data]) => ({
+      name,
+      'Average Attendance': data.count > 0 ? data.total / data.count : 0
+    }));
+}, [employees, requiredColumns.department, requiredColumns.attendance]);
+
+
+const avgKpiBySupervisorData = useMemo(() => {
+    if (!requiredColumns.supervisor || !requiredColumns.kpi) return [];
+    const supervisorData: Record<string, { total: number, count: number }> = {};
+    employees.forEach(emp => {
+        const supervisor = emp[requiredColumns.supervisor];
+        if (!supervisor) return;
+        if (!supervisorData[supervisor]) supervisorData[supervisor] = { total: 0, count: 0 };
+        supervisorData[supervisor].total += (Number(emp[requiredColumns.kpi]) || 0);
+        supervisorData[supervisor].count++;
+    });
+    return Object.entries(supervisorData).map(([name, data]) => ({
+      name,
+      'Average Team KPI': data.count > 0 ? data.total / data.count : 0
+    })).sort((a, b) => b['Average Team KPI'] - a['Average Team KPI']);
+}, [employees, requiredColumns.supervisor, requiredColumns.kpi]);
+
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalEmployees}</div>
-            <p className="text-xs text-muted-foreground">
-              Currently in the system
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average KPI</CardTitle>
-            <Gauge className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {requiredColumns.kpi ? <>
-            <div className="text-2xl font-bold">{stats.avgKpi.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
-              Across all departments
-            </p>
-            </> : <p className="text-xs text-muted-foreground">KPI column not found</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Avg. Productivity
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-             {requiredColumns.productivity ? <>
-            <div className="text-2xl font-bold">
-              {stats.avgProductivity.toFixed(1)}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Company-wide productivity rate
-            </p>
-             </> : <p className="text-xs text-muted-foreground">Productivity column not found</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Performance Mix
-            </CardTitle>
-            <Group className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2 pt-1">
-             {requiredColumns.performance && Object.entries(stats.performanceDistribution).length > 0 ? Object.entries(stats.performanceDistribution).map(([level, count]) => (
-                <Badge key={level} variant="secondary" className="text-xs">
-                  {level}: {count}
-                </Badge>
-              )) : <p className="text-xs text-muted-foreground">Performance column not found</p>}
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>KPI by Department</CardTitle>
-            <CardDescription>
-              Average Key Performance Indicator scores for each department.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {kpiByDeptData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={kpiByDeptData} margin={{ top: 5, right: 20, left: -10, bottom: 80 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="name"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  angle={-45}
-                  textAnchor="end"
-                  interval={0}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  unit="%"
-                />
-                <Tooltip
-                  cursor={{ fill: 'hsl(var(--secondary))' }}
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--background))',
-                    borderColor: 'hsl(var(--border))',
-                  }}
-                />
-                <Bar dataKey="avgKpi" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-            ) : <DataNotAvailable columnName={!requiredColumns.department ? 'Department' : 'Average KPI (%)'} />}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Level Distribution</CardTitle>
-            <CardDescription>
-              A breakdown of final performance levels across the company.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {performanceData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={isMobile ? 400 : 300}>
-              <PieChart>
-                <Pie
-                  data={performanceData}
-                  cx={isMobile ? "50%" : "40%"}
-                  cy="50%"
-                  labelLine={false}
-                  outerRadius={isMobile ? 80 : 100}
-                  fill="#8884d8"
-                  dataKey="value"
-                  nameKey="name"
-                  label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                    const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
-                    const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
-                    return (
-                      <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
-                        {`${(percent * 100).toFixed(0)}%`}
-                      </text>
-                    );
-                  }}
-                >
-                  {performanceData.map((entry) => (
-                    <Cell key={`cell-${entry.name}`} fill={performanceColors[entry.name]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--background))',
-                    borderColor: 'hsl(var(--border))',
-                  }}
-                />
-                <Legend
-                  layout={isMobile ? "horizontal" : "vertical"}
-                  verticalAlign={isMobile ? "bottom" : "middle"}
-                  align={isMobile ? "center" : "right"}
-                  iconType="circle"
-                  formatter={(value) => <span className="text-white">{value}</span>}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-             ) : <DataNotAvailable columnName={'Final Performance Level'} />}
-          </CardContent>
-        </Card>
-      </div>
+    <div className="flex flex-col gap-8">
+      <h1 className="text-3xl font-bold">HR Dashboard</h1>
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold tracking-tight">Overall Performance Snapshot</h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Average KPI Score</CardTitle>
+                    <Gauge className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    {requiredColumns.kpi ? <>
+                        <div className="text-2xl font-bold">{kpiCardStats.avgKpi.toFixed(1)}%</div>
+                        <p className="text-xs text-muted-foreground">Across all employee records</p>
+                    </> : <p className="text-xs text-muted-foreground pt-4">KPI column not found</p>}
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">% Excellent Performers</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    {requiredColumns.performance ? <>
+                        <div className="text-2xl font-bold">{kpiCardStats.excellentPercent.toFixed(1)}%</div>
+                        <p className="text-xs text-muted-foreground">Employees rated as 'Excellent'</p>
+                    </> : <p className="text-xs text-muted-foreground pt-4">Performance column not found</p>}
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Avg. Attendance Rate</CardTitle>
+                    <CalendarCheck className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    {requiredColumns.attendance ? <>
+                        <div className="text-2xl font-bold">{kpiCardStats.avgAttendance.toFixed(1)}%</div>
+                        <p className="text-xs text-muted-foreground">Company-wide average</p>
+                    </> : <p className="text-xs text-muted-foreground pt-4">Attendance column not found</p>}
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Training Hours</CardTitle>
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    {requiredColumns.trainingHours ? <>
+                        <div className="text-2xl font-bold">{kpiCardStats.totalTraining.toLocaleString()}</div>
+                        <p className="text-xs text-muted-foreground">Logged across the organization</p>
+                    </> : <p className="text-xs text-muted-foreground pt-4">Training Hours column not found</p>}
+                </CardContent>
+            </Card>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold tracking-tight">Performance Deep Dive</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {kpiTrendData.length > 0 ? (
+              <Card className="h-full">
+                  <CardHeader>
+                      <CardTitle className="text-lg">Quarterly KPI Trend</CardTitle>
+                      <CardDescription>Average KPI score across all employees per quarter.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                          <LineChart data={kpiTrendData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                              <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                              <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
+                              <Line type="monotone" dataKey="Average KPI" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
+                          </LineChart>
+                      </ResponsiveContainer>
+                  </CardContent>
+              </Card>
+            ) : <ChartNotAvailable title="Quarterly KPI Trend" description="Average KPI score across quarters." requiredColumns={['Quarter', 'KPI Score (%)']} />}
+            
+            {performanceDistributionData.length > 0 ? (
+              <Card className="h-full">
+                  <CardHeader>
+                      <CardTitle className="text-lg">Performance Rating</CardTitle>
+                      <CardDescription>Distribution of employee performance ratings.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                              <Pie data={performanceDistributionData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5}>
+                                  {performanceDistributionData.map((entry) => (
+                                      <Cell key={`cell-${entry.name}`} fill={PERFORMANCE_COLORS[entry.name] || CHART_COLORS.blue} />
+                                  ))}
+                              </Pie>
+                              <Tooltip content={<CustomTooltip />} />
+                              <Legend iconType="circle" formatter={(value) => <span className="text-foreground text-sm">{value}</span>} />
+                          </PieChart>
+                      </ResponsiveContainer>
+                  </CardContent>
+              </Card>
+            ) : <ChartNotAvailable title="Performance Rating" description="Distribution of employee performance ratings." requiredColumns={['Performance Rating']} />}
+
+            {departmentKpiData.length > 0 ? (
+              <Card className="h-full">
+                  <CardHeader>
+                      <CardTitle className="text-lg">Department-wise KPI</CardTitle>
+                      <CardDescription>Average KPI score for each department.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={departmentKpiData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                              <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                              <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
+                              <Bar dataKey="Average KPI" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                      </ResponsiveContainer>
+                  </CardContent>
+              </Card>
+            ) : <ChartNotAvailable title="Department-wise KPI" description="Average KPI score for each department." requiredColumns={['Department', 'KPI Score (%)']} />}
+            
+            {avgKpiBySupervisorData.length > 0 ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Team KPI by Supervisor</CardTitle>
+                        <CardDescription>Average team KPI score for each supervisor.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={avgKpiBySupervisorData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
+                                <Bar dataKey="Average Team KPI" fill={CHART_COLORS.green} radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            ) : <ChartNotAvailable title="Team KPI by Supervisor" description="Average team KPI score for each supervisor." requiredColumns={['Supervisor', 'KPI Score (%)']} />}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold tracking-tight">Workforce & Productivity</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {employeeDistByDeptData.length > 0 ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Employees by Department</CardTitle>
+                        <CardDescription>Total number of employee records in each department.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={employeeDistByDeptData} layout="vertical" margin={{ top: 5, right: 20, left: 50, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
+                                <Bar dataKey="Employees" fill={CHART_COLORS.purple} radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            ) : <ChartNotAvailable title="Employees by Department" description="Total number of employee records in each department." requiredColumns={['Department']} />}
+
+            {avgKpiByJobTitleData.length > 0 ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">KPI by Job Title</CardTitle>
+                        <CardDescription>Average KPI score for each job title.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={avgKpiByJobTitleData} margin={{bottom: 75 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis dataKey="name" angle={-45} textAnchor="end" stroke="hsl(var(--muted-foreground))" fontSize={12} interval={0} />
+                                <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12}/>
+                                <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
+                                <Bar dataKey="Average KPI" fill={CHART_COLORS.blue} radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            ) : <ChartNotAvailable title="KPI by Job Title" description="Average KPI score for each job title." requiredColumns={['Job Title', 'KPI Score (%)']} />}
+            
+            {projectsVsKpiData.length > 0 ? <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Projects vs. KPI</CardTitle>
+                    <CardDescription>Shows the relationship between projects completed and KPI score.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                            <CartesianGrid stroke="hsl(var(--border))" />
+                            <XAxis type="number" dataKey="kpi" name="KPI Score" unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <YAxis type="number" dataKey="projects" name="Projects Completed" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomTooltip />} />
+                            <Scatter name="Employees" data={projectsVsKpiData} fill="hsl(var(--primary))" />
+                        </ScatterChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card> : <ChartNotAvailable title="Projects vs. KPI" description="Relationship between projects completed and KPI score." requiredColumns={['Projects Completed', 'KPI Score (%)']} />}
+            
+            {avgAttendanceByDeptData.length > 0 ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Attendance by Department</CardTitle>
+                        <CardDescription>Average attendance rate per department.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={avgAttendanceByDeptData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="name" fontSize={12} stroke="hsl(var(--muted-foreground))" />
+                            <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--secondary))' }}/>
+                            <Bar dataKey="Average Attendance" fill={CHART_COLORS.orange} radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            ) : <ChartNotAvailable title="Attendance by Department" description="Average attendance rate per department." requiredColumns={['Department', 'Attendance Rate (%)']} />}
+        </div>
+      </section>
+      
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold tracking-tight">Development & Retention</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+             {avgTrainingByDeptData.length > 0 ? <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Training Hours by Department</CardTitle>
+                    <CardDescription>Average training hours per employee in each department.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={avgTrainingByDeptData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="name" fontSize={12} stroke="hsl(var(--muted-foreground))" />
+                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--secondary))' }}/>
+                            <Bar dataKey="Average Hours" fill={CHART_COLORS.purple} radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card> : <ChartNotAvailable title="Training Hours by Department" description="Average training hours per department." requiredColumns={['Department', 'Training Hours Attended']} />}
+        
+            {hrActionData.data.length > 0 ? <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">HR Recommendation Distribution</CardTitle>
+                    <CardDescription>Breakdown of retention actions and recommendations by department.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                         <BarChart data={hrActionData.data} layout="vertical" margin={{ top: 5, right: 20, left: 120, bottom: 5 }}>
+                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                             <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                             <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                             <Tooltip content={<CustomTooltip />} />
+                             <Legend formatter={(value) => <span className="text-foreground text-sm">{value}</span>} />
+                             {hrActionData.actions.map((action, index) => (
+                                <Bar
+                                    key={action}
+                                    dataKey={action}
+                                    stackId="a"
+                                    fill={STACK_COLORS[index % STACK_COLORS.length]}
+                                />
+                            ))}
+                         </BarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card> : <ChartNotAvailable title="HR Recommendation Distribution" description="Breakdown of retention actions by department." requiredColumns={['Department', 'System Recommendation']} />}
+        </div>
+       </section>
     </div>
   );
 }
+
+    
+
+    

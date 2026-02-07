@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/hooks/use-auth";
+import { useEmployeeData } from "@/hooks/use-employee-data";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +29,7 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { employees, headers } = useEmployeeData();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -41,7 +43,7 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    const success = await login(values.username, values.password);
+    const success = await login(values.username, values.password, employees, headers);
     if (!success) {
       toast({
         variant: "destructive",

@@ -26,7 +26,7 @@ export default function EmployeesPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [columns, setColumns] = useState<ColumnDef<EmployeeWithActions>[]>(() => generateColumns(headers));
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     setColumns(generateColumns(headers));
@@ -34,6 +34,11 @@ export default function EmployeesPage() {
 
   const idKey = useMemo(() => headers.find(h => h.toLowerCase().includes('id')) || headers[0], [headers]);
   const nameKey = useMemo(() => headers.find(h => h.toLowerCase().includes('name')) || headers[1] || idKey, [headers, idKey]);
+  
+  const employeeToDeleteDetails = useMemo(() => {
+    if (!employeeToDelete) return null;
+    return employeeData.find(e => e[idKey] === employeeToDelete);
+  }, [employeeToDelete, employeeData, idKey]);
 
   if (headers.length === 0) {
     return (
@@ -48,15 +53,6 @@ export default function EmployeesPage() {
     const { onEdit, onDelete, ...data } = employee as EmployeeWithActions;
     setSelectedEmployee(data);
     setIsSheetOpen(true);
-  }, []);
-
-  const handleSheetOpenChange = useCallback((open: boolean) => {
-    if (!open) {
-      setIsSheetOpen(false);
-      setSelectedEmployee(null);
-    } else {
-      setIsSheetOpen(open);
-    }
   }, []);
 
   const handleAddEmployee = useCallback((newEmployee: Employee) => {
@@ -99,20 +95,16 @@ export default function EmployeesPage() {
   }, [employeeData, headers, idKey, nameKey, handleAddEmployee, setEmployeeData, toast]);
 
   const handleDeleteClick = useCallback((employeeId: string) => {
-    const employee = employeeData.find(e => e[idKey] === employeeId);
-    if (employee) {
-        setEmployeeToDelete(employee);
-        setIsDeleteDialogOpen(true);
-    }
-  }, [employeeData, idKey]);
+    setEmployeeToDelete(employeeId);
+    setIsDeleteDialogOpen(true);
+  }, []);
 
   const confirmDeleteEmployee = useCallback(() => {
     if (!employeeToDelete) return;
     
-    const employeeId = employeeToDelete[idKey];
-    const employeeName = employeeToDelete[nameKey];
+    const employeeName = employeeToDeleteDetails?.[nameKey] || "the employee";
     
-    const updatedData = employeeData.filter(emp => emp[idKey] !== employeeId);
+    const updatedData = employeeData.filter(emp => emp[idKey] !== employeeToDelete);
     setEmployeeData(updatedData, headers);
     
     toast({
@@ -123,7 +115,7 @@ export default function EmployeesPage() {
 
     setIsDeleteDialogOpen(false);
     setEmployeeToDelete(null);
-  }, [employeeData, employeeToDelete, headers, idKey, nameKey, setEmployeeData, toast]);
+  }, [employeeData, employeeToDelete, employeeToDeleteDetails, headers, idKey, nameKey, setEmployeeData, toast]);
 
   const employeesWithActions: EmployeeWithActions[] = useMemo(() => employeeData.map(emp => ({
     ...emp,
@@ -142,7 +134,7 @@ export default function EmployeesPage() {
       />
       <EditEmployeeSheet
         isOpen={isSheetOpen}
-        onOpenChange={handleSheetOpenChange}
+        onOpenChange={setIsSheetOpen}
         employee={selectedEmployee}
         onSave={handleUpdateEmployee}
       />
@@ -152,7 +144,7 @@ export default function EmployeesPage() {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the
-              employee &apos;{employeeToDelete?.[nameKey]}&apos; and remove their data.
+              employee &apos;{employeeToDeleteDetails?.[nameKey]}&apos; and remove their data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

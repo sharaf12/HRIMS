@@ -40,16 +40,10 @@ export function EditEmployeeSheet({
   });
   
   useEffect(() => {
-    if (employee && isOpen) {
+    if (employee) {
       form.reset(employee);
-    } else if (!isOpen) {
-      form.reset();
     }
-  }, [employee, isOpen]);
-
-  const handleClose = (open: boolean) => {
-    onOpenChange(open);
-  };
+  }, [employee, form]);
 
   const onSubmit = (values: Employee) => {
     // Coerce numeric values back to numbers
@@ -73,7 +67,7 @@ export function EditEmployeeSheet({
   const employeeName = employee[nameKey];
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Edit Employee</SheetTitle>
@@ -82,7 +76,7 @@ export function EditEmployeeSheet({
           </SheetDescription>
         </SheetHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4" noValidate>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
              {headers.map(header => {
                 const isNumeric = typeof employee[header] === 'number';
                 return (
@@ -108,7 +102,7 @@ export function EditEmployeeSheet({
                 />
              )})}
              <SheetFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => handleClose(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit">Save Changes</Button>
             </SheetFooter>
           </form>
