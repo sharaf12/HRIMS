@@ -15,7 +15,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { useEmployeeData } from "@/hooks/use-employee-data";
-import { Gauge, TrendingUp, CalendarCheck, Clock, AlertTriangle, Users } from "lucide-react";
+import { Gauge, TrendingUp, CalendarCheck, Clock } from "lucide-react";
 
 const CHART_COLORS = {
   blue: "hsl(var(--chart-2))",
@@ -42,23 +42,6 @@ const PERFORMANCE_COLORS: Record<string, string> = {
   "Needs Improvement": CHART_COLORS.orange,
   Poor: CHART_COLORS.red,
 };
-
-
-const ChartNotAvailable = ({ title, description, requiredColumns }: { title: string; description: string; requiredColumns: string[] }) => (
-    <Card className="h-full">
-        <CardHeader>
-            <CardTitle className="text-lg">{title}</CardTitle>
-            <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center h-48 text-center">
-            <AlertTriangle className="h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">Data not available</p>
-            <p className="text-xs text-muted-foreground mt-1">
-                Required column(s): {requiredColumns.join(', ')}
-            </p>
-        </CardContent>
-    </Card>
-);
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -306,61 +289,61 @@ const avgKpiBySupervisorData = useMemo(() => {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Overall Performance Snapshot</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Average KPI Score</CardTitle>
-                    <Gauge className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    {requiredColumns.kpi ? <>
-                        <div className="text-2xl font-bold">{kpiCardStats.avgKpi.toFixed(1)}%</div>
-                        <p className="text-xs text-muted-foreground">Across all employee records</p>
-                    </> : <p className="text-xs text-muted-foreground pt-4">KPI column not found</p>}
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">% Excellent Performers</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    {requiredColumns.performance ? <>
-                        <div className="text-2xl font-bold">{kpiCardStats.excellentPercent.toFixed(1)}%</div>
-                        <p className="text-xs text-muted-foreground">Employees rated as 'Excellent'</p>
-                    </> : <p className="text-xs text-muted-foreground pt-4">Performance column not found</p>}
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Avg. Attendance Rate</CardTitle>
-                    <CalendarCheck className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    {requiredColumns.attendance ? <>
-                        <div className="text-2xl font-bold">{kpiCardStats.avgAttendance.toFixed(1)}%</div>
-                        <p className="text-xs text-muted-foreground">Company-wide average</p>
-                    </> : <p className="text-xs text-muted-foreground pt-4">Attendance column not found</p>}
-                </CardContent>
-            </Card>
+            {requiredColumns.kpi && (
+              <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Average KPI Score</CardTitle>
+                      <Gauge className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                      <div className="text-2xl font-bold">{kpiCardStats.avgKpi.toFixed(1)}%</div>
+                      <p className="text-xs text-muted-foreground">Across all employee records</p>
+                  </CardContent>
+              </Card>
+            )}
+            {requiredColumns.performance && (
+              <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">% Excellent Performers</CardTitle>
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                      <div className="text-2xl font-bold">{kpiCardStats.excellentPercent.toFixed(1)}%</div>
+                      <p className="text-xs text-muted-foreground">Employees rated as 'Excellent'</p>
+                  </CardContent>
+              </Card>
+            )}
+            {requiredColumns.attendance && (
+              <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Avg. Attendance Rate</CardTitle>
+                      <CalendarCheck className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                      <div className="text-2xl font-bold">{kpiCardStats.avgAttendance.toFixed(1)}%</div>
+                      <p className="text-xs text-muted-foreground">Company-wide average</p>
+                  </CardContent>
+              </Card>
+            )}
+            {requiredColumns.trainingHours && (
              <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Training Hours</CardTitle>
                     <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    {requiredColumns.trainingHours ? <>
-                        <div className="text-2xl font-bold">{kpiCardStats.totalTraining.toLocaleString()}</div>
-                        <p className="text-xs text-muted-foreground">Logged across the organization</p>
-                    </> : <p className="text-xs text-muted-foreground pt-4">Training Hours column not found</p>}
+                    <div className="text-2xl font-bold">{kpiCardStats.totalTraining.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">Logged across the organization</p>
                 </CardContent>
             </Card>
+            )}
         </div>
       </section>
 
       <section className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Performance Deep Dive</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {kpiTrendData.length > 0 ? (
+            {kpiTrendData.length > 0 && (
               <Card className="h-full">
                   <CardHeader>
                       <CardTitle className="text-lg">Quarterly KPI Trend</CardTitle>
@@ -378,9 +361,9 @@ const avgKpiBySupervisorData = useMemo(() => {
                       </ResponsiveContainer>
                   </CardContent>
               </Card>
-            ) : <ChartNotAvailable title="Quarterly KPI Trend" description="Average KPI score across quarters." requiredColumns={['Quarter', 'KPI Score (%)']} />}
+            )}
             
-            {performanceDistributionData.length > 0 ? (
+            {performanceDistributionData.length > 0 && (
               <Card className="h-full">
                   <CardHeader>
                       <CardTitle className="text-lg">Performance Rating</CardTitle>
@@ -400,9 +383,9 @@ const avgKpiBySupervisorData = useMemo(() => {
                       </ResponsiveContainer>
                   </CardContent>
               </Card>
-            ) : <ChartNotAvailable title="Performance Rating" description="Distribution of employee performance ratings." requiredColumns={['Performance Rating']} />}
+            )}
 
-            {departmentKpiData.length > 0 ? (
+            {departmentKpiData.length > 0 && (
               <Card className="h-full">
                   <CardHeader>
                       <CardTitle className="text-lg">Department-wise KPI</CardTitle>
@@ -420,9 +403,9 @@ const avgKpiBySupervisorData = useMemo(() => {
                       </ResponsiveContainer>
                   </CardContent>
               </Card>
-            ) : <ChartNotAvailable title="Department-wise KPI" description="Average KPI score for each department." requiredColumns={['Department', 'KPI Score (%)']} />}
+            )}
             
-            {avgKpiBySupervisorData.length > 0 ? (
+            {avgKpiBySupervisorData.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-lg">Team KPI by Supervisor</CardTitle>
@@ -440,14 +423,14 @@ const avgKpiBySupervisorData = useMemo(() => {
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
-            ) : <ChartNotAvailable title="Team KPI by Supervisor" description="Average team KPI score for each supervisor." requiredColumns={['Supervisor', 'KPI Score (%)']} />}
+            )}
         </div>
       </section>
-
+      
       <section className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Workforce & Productivity</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {employeeDistByDeptData.length > 0 ? (
+            {employeeDistByDeptData.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-lg">Employees by Department</CardTitle>
@@ -465,9 +448,9 @@ const avgKpiBySupervisorData = useMemo(() => {
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
-            ) : <ChartNotAvailable title="Employees by Department" description="Total number of employee records in each department." requiredColumns={['Department']} />}
+            )}
 
-            {avgKpiByJobTitleData.length > 0 ? (
+            {avgKpiByJobTitleData.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-lg">KPI by Job Title</CardTitle>
@@ -485,9 +468,9 @@ const avgKpiBySupervisorData = useMemo(() => {
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
-            ) : <ChartNotAvailable title="KPI by Job Title" description="Average KPI score for each job title." requiredColumns={['Job Title', 'KPI Score (%)']} />}
+            )}
             
-            {projectsVsKpiData.length > 0 ? <Card>
+            {projectsVsKpiData.length > 0 && <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">Projects vs. KPI</CardTitle>
                     <CardDescription>Shows the relationship between projects completed and KPI score.</CardDescription>
@@ -503,9 +486,9 @@ const avgKpiBySupervisorData = useMemo(() => {
                         </ScatterChart>
                     </ResponsiveContainer>
                 </CardContent>
-            </Card> : <ChartNotAvailable title="Projects vs. KPI" description="Relationship between projects completed and KPI score." requiredColumns={['Projects Completed', 'KPI Score (%)']} />}
+            </Card>}
             
-            {avgAttendanceByDeptData.length > 0 ? (
+            {avgAttendanceByDeptData.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-lg">Attendance by Department</CardTitle>
@@ -523,14 +506,14 @@ const avgKpiBySupervisorData = useMemo(() => {
                     </ResponsiveContainer>
                     </CardContent>
                 </Card>
-            ) : <ChartNotAvailable title="Attendance by Department" description="Average attendance rate per department." requiredColumns={['Department', 'Attendance Rate (%)']} />}
+            )}
         </div>
       </section>
       
       <section className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Development & Retention</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             {avgTrainingByDeptData.length > 0 ? <Card>
+             {avgTrainingByDeptData.length > 0 && <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">Training Hours by Department</CardTitle>
                     <CardDescription>Average training hours per employee in each department.</CardDescription>
@@ -546,9 +529,9 @@ const avgKpiBySupervisorData = useMemo(() => {
                         </BarChart>
                     </ResponsiveContainer>
                 </CardContent>
-            </Card> : <ChartNotAvailable title="Training Hours by Department" description="Average training hours per department." requiredColumns={['Department', 'Training Hours Attended']} />}
+            </Card>}
         
-            {hrActionData.data.length > 0 ? <Card>
+            {hrActionData.data.length > 0 && <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">HR Recommendation Distribution</CardTitle>
                     <CardDescription>Breakdown of retention actions and recommendations by department.</CardDescription>
@@ -572,13 +555,9 @@ const avgKpiBySupervisorData = useMemo(() => {
                          </BarChart>
                     </ResponsiveContainer>
                 </CardContent>
-            </Card> : <ChartNotAvailable title="HR Recommendation Distribution" description="Breakdown of retention actions by department." requiredColumns={['Department', 'System Recommendation']} />}
+            </Card>}
         </div>
        </section>
     </div>
   );
 }
-
-    
-
-    

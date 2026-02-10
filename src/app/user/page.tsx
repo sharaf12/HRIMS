@@ -124,29 +124,45 @@ export default function UserDashboard() {
            </CardContent>}
         </Card>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Rewards & Retention</CardTitle>
-          </CardHeader>
-           <CardContent className="grid gap-6 sm:grid-cols-2">
-            {bonusKey && <div className="flex items-start gap-4">
-              <Gift className="h-8 w-8 text-accent mt-1" />
-              <div>
-                <p className="text-sm text-muted-foreground">{bonusKey}</p>
-                <p className="text-2xl font-bold">{employee[bonusKey]}</p>
-                 {rewardKey && <p className="text-xs text-muted-foreground">{rewardKey}: {employee[rewardKey]}</p>}
-              </div>
-            </div>}
-            {retentionKey && <div className="flex items-start gap-4">
-              <Handshake className="h-8 w-8 text-accent mt-1" />
-              <div>
-                <p className="text-sm text-muted-foreground">{retentionKey}</p>
-                <p className="text-xl font-semibold">{employee[retentionKey]}</p>
-                <p className="text-xs text-muted-foreground">Proactive measures for career growth</p>
-              </div>
-            </div>}
-          </CardContent>
-        </Card>
+        {(bonusKey || rewardKey || retentionKey) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Rewards & Retention</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-6 sm:grid-cols-2">
+              {bonusKey && (
+                <div className="flex items-start gap-4">
+                  <Gift className="h-8 w-8 text-accent mt-1" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">{bonusKey}</p>
+                    <p className="text-2xl font-bold">{employee[bonusKey]}</p>
+                    {rewardKey && (
+                      <p className="text-xs text-muted-foreground">
+                        {rewardKey}: {employee[rewardKey]}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {retentionKey && (
+                <div className="flex items-start gap-4">
+                  <Handshake className="h-8 w-8 text-accent mt-1" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {retentionKey}
+                    </p>
+                    <p className="text-xl font-semibold">
+                      {employee[retentionKey]}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Proactive measures for career growth
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

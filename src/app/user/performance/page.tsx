@@ -52,6 +52,8 @@ export default function PerformancePage() {
   ]
   const COLORS = ["hsl(var(--primary))", "hsl(var(--muted))"];
 
+  const hasRewardData = bonusKey || rewardKey || retentionKey || performanceKey;
+
   return (
     <div className="space-y-6">
        <h1 className="text-3xl font-bold">Your Performance Details</h1>
@@ -117,41 +119,71 @@ export default function PerformancePage() {
           </CardContent>
         </Card> : <DataNotAvailable featureName="KPI Gauge"/>}
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Reward & Recommendation Summary</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {(bonusKey || rewardKey) && <div className="flex items-center p-4 border rounded-lg">
-            <Gift className="mr-4 h-8 w-8 text-primary"/>
-            <div>
-              <p className="font-semibold">Bonus & Reward</p>
-              <p className="text-sm text-muted-foreground">
-                {bonusKey && <>Bonus Eligibility: <span className="font-medium text-foreground">{employee[bonusKey]}</span><br /></>}
-                {rewardKey && <>Reward Type: <span className="font-medium text-foreground">{employee[rewardKey]}</span></>}
-              </p>
-            </div>
-          </div>}
-           {retentionKey && <div className="flex items-center p-4 border rounded-lg">
-            <TrendingUp className="mr-4 h-8 w-8 text-accent"/>
-            <div>
-              <p className="font-semibold">Retention & Growth</p>
-              <p className="text-sm text-muted-foreground">
-                Retention Action: <span className="font-medium text-foreground">{employee[retentionKey]}</span>
-              </p>
-            </div>
-          </div>}
-           {performanceKey && <div className="flex items-center p-4 border rounded-lg">
-            <Award className="mr-4 h-8 w-8 text-yellow-400"/>
-            <div>
-              <p className="font-semibold">Final Performance Level</p>
-              <p className="text-sm text-muted-foreground">
-                Your calculated performance level is <span className="font-medium text-foreground">{employee[performanceKey]}</span>.
-              </p>
-            </div>
-          </div>}
-        </CardContent>
-      </Card>
+      {hasRewardData && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Reward & Recommendation Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {(bonusKey || rewardKey) && (
+              <div className="flex items-center p-4 border rounded-lg">
+                <Gift className="mr-4 h-8 w-8 text-primary" />
+                <div>
+                  <p className="font-semibold">Bonus & Reward</p>
+                  <p className="text-sm text-muted-foreground">
+                    {bonusKey && (
+                      <>
+                        Bonus Eligibility:{' '}
+                        <span className="font-medium text-foreground">
+                          {employee[bonusKey]}
+                        </span>
+                        <br />
+                      </>
+                    )}
+                    {rewardKey && (
+                      <>
+                        Reward Type:{' '}
+                        <span className="font-medium text-foreground">
+                          {employee[rewardKey]}
+                        </span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+            {retentionKey && (
+              <div className="flex items-center p-4 border rounded-lg">
+                <TrendingUp className="mr-4 h-8 w-8 text-accent" />
+                <div>
+                  <p className="font-semibold">Retention & Growth</p>
+                  <p className="text-sm text-muted-foreground">
+                    Retention Action:{' '}
+                    <span className="font-medium text-foreground">
+                      {employee[retentionKey]}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+            {performanceKey && (
+              <div className="flex items-center p-4 border rounded-lg">
+                <Award className="mr-4 h-8 w-8 text-yellow-400" />
+                <div>
+                  <p className="font-semibold">Final Performance Level</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your calculated performance level is{' '}
+                    <span className="font-medium text-foreground">
+                      {employee[performanceKey]}
+                    </span>
+                    .
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
