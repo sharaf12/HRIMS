@@ -2,6 +2,9 @@
 
 A modern, full-featured HR management system built with Next.js and React. Manage employee data, track performance metrics, and view comprehensive employee analytics with an intuitive dashboard.
 
+### 🔗 Live Demo
+[![Deploy Link](https://img.shields.io/badge/Live%20Demo-Visit%20Now-0066cc?style=for-the-badge)](https://hrims.onrender.com)
+
 ## 🚀 Tech Stack
 
 ### Frontend
