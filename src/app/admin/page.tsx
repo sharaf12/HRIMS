@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -15,7 +15,17 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { useEmployeeData } from "@/hooks/use-employee-data";
-import { Gauge, TrendingUp, CalendarCheck, Clock } from "lucide-react";
+import { Gauge, TrendingUp, CalendarCheck, Clock, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 const CHART_COLORS = {
   blue: "hsl(var(--chart-2))",
@@ -43,6 +53,20 @@ const PERFORMANCE_COLORS: Record<string, string> = {
   Poor: CHART_COLORS.red,
 };
 
+const chartOptions = {
+    kpiTrend: "Quarterly KPI Trend",
+    performanceDistribution: "Performance Rating Distribution",
+    departmentKpi: "Department-wise KPI",
+    avgKpiBySupervisor: "Team KPI by Supervisor",
+    employeeDistByDept: "Employees by Department",
+    avgKpiByJobTitle: "KPI by Job Title",
+    projectsVsKpi: "Projects vs. KPI",
+    avgAttendanceByDept: "Attendance by Department",
+    avgTrainingByDept: "Training Hours by Department",
+    hrAction: "HR Recommendation Distribution",
+};
+
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const finalLabel = label || payload[0]?.payload?.name;
@@ -63,6 +87,18 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function AdminDashboard() {
   const { employees, headers } = useEmployeeData();
+
+  const [visibleCharts, setVisibleCharts] = useState<Record<string, boolean>>(() => {
+    const initialState: Record<string, boolean> = {};
+    for (const key in chartOptions) {
+        initialState[key] = true;
+    }
+    return initialState;
+  });
+
+  const handleChartVisibilityChange = (chartKey: string, checked: boolean) => {
+      setVisibleCharts(prev => ({ ...prev, [chartKey]: checked }));
+  };
 
   const requiredColumns = useMemo(() => {
     const findHeader = (keywords: string[]) => {
@@ -282,9 +318,48 @@ const avgKpiBySupervisorData = useMemo(() => {
 }, [employees, requiredColumns.supervisor, requiredColumns.kpi]);
 
 
+  const isPerformanceDeepDiveVisible = 
+    (visibleCharts.kpiTrend && kpiTrendData.length > 0) ||
+    (visibleCharts.performanceDistribution && performanceDistributionData.length > 0) ||
+    (visibleCharts.departmentKpi && departmentKpiData.length > 0) ||
+    (visibleCharts.avgKpiBySupervisor && avgKpiBySupervisorData.length > 0);
+
+  const isWorkforceProductivityVisible = 
+    (visibleCharts.employeeDistByDept && employeeDistByDeptData.length > 0) ||
+    (visibleCharts.avgKpiByJobTitle && avgKpiByJobTitleData.length > 0) ||
+    (visibleCharts.projectsVsKpi && projectsVsKpiData.length > 0) ||
+    (visibleCharts.avgAttendanceByDept && avgAttendanceByDeptData.length > 0);
+
+  const isDevelopmentRetentionVisible =
+    (visibleCharts.avgTrainingByDept && avgTrainingByDeptData.length > 0) ||
+    (visibleCharts.hrAction && hrActionData.data.length > 0);
+
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-3xl font-bold">HR Dashboard</h1>
+       <div className="flex items-center justify-between">
+         <h1 className="text-3xl font-bold">HR Dashboard</h1>
+         <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Customize Dashboard
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-64" align="end">
+                <DropdownMenuLabel>Show/Hide Visualizations</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {Object.entries(chartOptions).map(([key, label]) => (
+                    <DropdownMenuCheckboxItem
+                        key={key}
+                        checked={visibleCharts[key]}
+                        onCheckedChange={(checked) => handleChartVisibilityChange(key, !!checked)}
+                    >
+                        {label}
+                    </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+       </div>
 
       <section className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Overall Performance Snapshot</h2>
@@ -340,224 +415,230 @@ const avgKpiBySupervisorData = useMemo(() => {
         </div>
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">Performance Deep Dive</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {kpiTrendData.length > 0 && (
-              <Card className="h-full">
-                  <CardHeader>
-                      <CardTitle className="text-lg">Quarterly KPI Trend</CardTitle>
-                      <CardDescription>Average KPI score across all employees per quarter.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                          <LineChart data={kpiTrendData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                              <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                              <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
-                              <Line type="monotone" dataKey="Average KPI" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
-                          </LineChart>
-                      </ResponsiveContainer>
-                  </CardContent>
-              </Card>
-            )}
-            
-            {performanceDistributionData.length > 0 && (
-              <Card className="h-full">
-                  <CardHeader>
-                      <CardTitle className="text-lg">Performance Rating</CardTitle>
-                      <CardDescription>Distribution of employee performance ratings.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                          <PieChart>
-                              <Pie data={performanceDistributionData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5}>
-                                  {performanceDistributionData.map((entry) => (
-                                      <Cell key={`cell-${entry.name}`} fill={PERFORMANCE_COLORS[entry.name] || CHART_COLORS.blue} />
-                                  ))}
-                              </Pie>
-                              <Tooltip content={<CustomTooltip />} />
-                              <Legend iconType="circle" formatter={(value) => <span className="text-foreground text-sm">{value}</span>} />
-                          </PieChart>
-                      </ResponsiveContainer>
-                  </CardContent>
-              </Card>
-            )}
-
-            {departmentKpiData.length > 0 && (
-              <Card className="h-full">
-                  <CardHeader>
-                      <CardTitle className="text-lg">Department-wise KPI</CardTitle>
-                      <CardDescription>Average KPI score for each department.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={departmentKpiData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                              <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                              <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
-                              <Bar dataKey="Average KPI" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                      </ResponsiveContainer>
-                  </CardContent>
-              </Card>
-            )}
-            
-            {avgKpiBySupervisorData.length > 0 && (
-                <Card>
+      {isPerformanceDeepDiveVisible && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold tracking-tight">Performance Deep Dive</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {visibleCharts.kpiTrend && kpiTrendData.length > 0 && (
+                <Card className="h-full">
                     <CardHeader>
-                        <CardTitle className="text-lg">Team KPI by Supervisor</CardTitle>
-                        <CardDescription>Average team KPI score for each supervisor.</CardDescription>
+                        <CardTitle className="text-lg">Quarterly KPI Trend</CardTitle>
+                        <CardDescription>Average KPI score across all employees per quarter.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={avgKpiBySupervisorData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={kpiTrendData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
+                                <Line type="monotone" dataKey="Average KPI" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+              )}
+              
+              {visibleCharts.performanceDistribution && performanceDistributionData.length > 0 && (
+                <Card className="h-full">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Performance Rating</CardTitle>
+                        <CardDescription>Distribution of employee performance ratings.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                                <Pie data={performanceDistributionData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5}>
+                                    {performanceDistributionData.map((entry) => (
+                                        <Cell key={`cell-${entry.name}`} fill={PERFORMANCE_COLORS[entry.name] || CHART_COLORS.blue} />
+                                    ))}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend iconType="circle" formatter={(value) => <span className="text-foreground text-sm">{value}</span>} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+              )}
+
+              {visibleCharts.departmentKpi && departmentKpiData.length > 0 && (
+                <Card className="h-full">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Department-wise KPI</CardTitle>
+                        <CardDescription>Average KPI score for each department.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={departmentKpiData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                                 <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                                 <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                                 <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
-                                <Bar dataKey="Average Team KPI" fill={CHART_COLORS.green} radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Average KPI" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
-            )}
-        </div>
-      </section>
+              )}
+              
+              {visibleCharts.avgKpiBySupervisor && avgKpiBySupervisorData.length > 0 && (
+                  <Card>
+                      <CardHeader>
+                          <CardTitle className="text-lg">Team KPI by Supervisor</CardTitle>
+                          <CardDescription>Average team KPI score for each supervisor.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                           <ResponsiveContainer width="100%" height={300}>
+                              <BarChart data={avgKpiBySupervisorData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                                  <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                  <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
+                                  <Bar dataKey="Average Team KPI" fill={CHART_COLORS.green} radius={[4, 4, 0, 0]} />
+                              </BarChart>
+                          </ResponsiveContainer>
+                      </CardContent>
+                  </Card>
+              )}
+          </div>
+        </section>
+      )}
       
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">Workforce & Productivity</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {employeeDistByDeptData.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">Employees by Department</CardTitle>
-                        <CardDescription>Total number of employee records in each department.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={employeeDistByDeptData} layout="vertical" margin={{ top: 5, right: 20, left: 50, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                                <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                                <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                                <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
-                                <Bar dataKey="Employees" fill={CHART_COLORS.purple} radius={[0, 4, 4, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            )}
+      {isWorkforceProductivityVisible && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold tracking-tight">Workforce & Productivity</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {visibleCharts.employeeDistByDept && employeeDistByDeptData.length > 0 && (
+                  <Card>
+                      <CardHeader>
+                          <CardTitle className="text-lg">Employees by Department</CardTitle>
+                          <CardDescription>Total number of employee records in each department.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                          <ResponsiveContainer width="100%" height={300}>
+                              <BarChart data={employeeDistByDeptData} layout="vertical" margin={{ top: 5, right: 20, left: 50, bottom: 5 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                  <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                  <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                  <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
+                                  <Bar dataKey="Employees" fill={CHART_COLORS.purple} radius={[0, 4, 4, 0]} />
+                              </BarChart>
+                          </ResponsiveContainer>
+                      </CardContent>
+                  </Card>
+              )}
 
-            {avgKpiByJobTitleData.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">KPI by Job Title</CardTitle>
-                        <CardDescription>Average KPI score for each job title.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={avgKpiByJobTitleData} margin={{bottom: 75 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                                <XAxis dataKey="name" angle={-45} textAnchor="end" stroke="hsl(var(--muted-foreground))" fontSize={12} interval={0} />
-                                <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12}/>
-                                <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
-                                <Bar dataKey="Average KPI" fill={CHART_COLORS.blue} radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            )}
-            
-            {projectsVsKpiData.length > 0 && <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">Projects vs. KPI</CardTitle>
-                    <CardDescription>Shows the relationship between projects completed and KPI score.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-                            <CartesianGrid stroke="hsl(var(--border))" />
-                            <XAxis type="number" dataKey="kpi" name="KPI Score" unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <YAxis type="number" dataKey="projects" name="Projects Completed" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomTooltip />} />
-                            <Scatter name="Employees" data={projectsVsKpiData} fill="hsl(var(--primary))" />
-                        </ScatterChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>}
-            
-            {avgAttendanceByDeptData.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">Attendance by Department</CardTitle>
-                        <CardDescription>Average attendance rate per department.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={avgAttendanceByDeptData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis dataKey="name" fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                            <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--secondary))' }}/>
-                            <Bar dataKey="Average Attendance" fill={CHART_COLORS.orange} radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            )}
-        </div>
-      </section>
+              {visibleCharts.avgKpiByJobTitle && avgKpiByJobTitleData.length > 0 && (
+                  <Card>
+                      <CardHeader>
+                          <CardTitle className="text-lg">KPI by Job Title</CardTitle>
+                          <CardDescription>Average KPI score for each job title.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                          <ResponsiveContainer width="100%" height={300}>
+                              <BarChart data={avgKpiByJobTitleData} margin={{bottom: 75 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                  <XAxis dataKey="name" angle={-45} textAnchor="end" stroke="hsl(var(--muted-foreground))" fontSize={12} interval={0} />
+                                  <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12}/>
+                                  <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} content={<CustomTooltip />} />
+                                  <Bar dataKey="Average KPI" fill={CHART_COLORS.blue} radius={[4, 4, 0, 0]} />
+                              </BarChart>
+                          </ResponsiveContainer>
+                      </CardContent>
+                  </Card>
+              )}
+              
+              {visibleCharts.projectsVsKpi && projectsVsKpiData.length > 0 && <Card>
+                  <CardHeader>
+                      <CardTitle className="text-lg">Projects vs. KPI</CardTitle>
+                      <CardDescription>Shows the relationship between projects completed and KPI score.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                          <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                              <CartesianGrid stroke="hsl(var(--border))" />
+                              <XAxis type="number" dataKey="kpi" name="KPI Score" unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                              <YAxis type="number" dataKey="projects" name="Projects Completed" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                              <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomTooltip />} />
+                              <Scatter name="Employees" data={projectsVsKpiData} fill="hsl(var(--primary))" />
+                          </ScatterChart>
+                      </ResponsiveContainer>
+                  </CardContent>
+              </Card>}
+              
+              {visibleCharts.avgAttendanceByDept && avgAttendanceByDeptData.length > 0 && (
+                  <Card>
+                      <CardHeader>
+                          <CardTitle className="text-lg">Attendance by Department</CardTitle>
+                          <CardDescription>Average attendance rate per department.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                         <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={avgAttendanceByDeptData}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                              <XAxis dataKey="name" fontSize={12} stroke="hsl(var(--muted-foreground))" />
+                              <YAxis unit="%" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--secondary))' }}/>
+                              <Bar dataKey="Average Attendance" fill={CHART_COLORS.orange} radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                      </ResponsiveContainer>
+                      </CardContent>
+                  </Card>
+              )}
+          </div>
+        </section>
+      )}
       
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">Development & Retention</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             {avgTrainingByDeptData.length > 0 && <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">Training Hours by Department</CardTitle>
-                    <CardDescription>Average training hours per employee in each department.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={avgTrainingByDeptData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis dataKey="name" fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--secondary))' }}/>
-                            <Bar dataKey="Average Hours" fill={CHART_COLORS.purple} radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>}
-        
-            {hrActionData.data.length > 0 && <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">HR Recommendation Distribution</CardTitle>
-                    <CardDescription>Breakdown of retention actions and recommendations by department.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                         <BarChart data={hrActionData.data} layout="vertical" margin={{ top: 5, right: 20, left: 120, bottom: 5 }}>
-                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                             <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                             <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                             <Tooltip content={<CustomTooltip />} />
-                             <Legend formatter={(value) => <span className="text-foreground text-sm">{value}</span>} />
-                             {hrActionData.actions.map((action, index) => (
-                                <Bar
-                                    key={action}
-                                    dataKey={action}
-                                    stackId="a"
-                                    fill={STACK_COLORS[index % STACK_COLORS.length]}
-                                />
-                            ))}
-                         </BarChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>}
-        </div>
-       </section>
+      {isDevelopmentRetentionVisible && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold tracking-tight">Development & Retention</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+               {visibleCharts.avgTrainingByDept && avgTrainingByDeptData.length > 0 && <Card>
+                  <CardHeader>
+                      <CardTitle className="text-lg">Training Hours by Department</CardTitle>
+                      <CardDescription>Average training hours per employee in each department.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={avgTrainingByDeptData}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                              <XAxis dataKey="name" fontSize={12} stroke="hsl(var(--muted-foreground))" />
+                              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--secondary))' }}/>
+                              <Bar dataKey="Average Hours" fill={CHART_COLORS.purple} radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                      </ResponsiveContainer>
+                  </CardContent>
+              </Card>}
+          
+              {visibleCharts.hrAction && hrActionData.data.length > 0 && <Card>
+                  <CardHeader>
+                      <CardTitle className="text-lg">HR Recommendation Distribution</CardTitle>
+                      <CardDescription>Breakdown of retention actions and recommendations by department.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <ResponsiveContainer width="100%" height={400}>
+                           <BarChart data={hrActionData.data} layout="vertical" margin={{ top: 5, right: 20, left: 120, bottom: 5 }}>
+                               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                               <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                               <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                               <Tooltip content={<CustomTooltip />} />
+                               <Legend formatter={(value) => <span className="text-foreground text-sm">{value}</span>} />
+                               {hrActionData.actions.map((action, index) => (
+                                  <Bar
+                                      key={action}
+                                      dataKey={action}
+                                      stackId="a"
+                                      fill={STACK_COLORS[index % STACK_COLORS.length]}
+                                  />
+                              ))}
+                           </BarChart>
+                      </ResponsiveContainer>
+                  </CardContent>
+              </Card>}
+          </div>
+         </section>
+      )}
     </div>
   );
 }
